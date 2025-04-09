@@ -19,7 +19,7 @@ from api_calls import call_classify_pdfs, call_evaluate_rfp_pdfs, call_readiness
 st.set_page_config(page_title="pWin.AI", layout="wide")
 
 # Define available document types for the dropdown - these match the backend classification
-DOCUMENT_TYPES = ["RFP", "PWS", "SOW", "SOO", "RFP Response", "PP", "CS", "Unknown", "Other"]
+DOCUMENT_TYPES = ["RFP", "PWS", "SOW", "SOO", "RFP Response", "Past Performance", "Capabilities Statement", "Unknown", "Case Study"]
 
 # Initialize session state variables if they don't exist
 if 'classification_results' not in st.session_state:
