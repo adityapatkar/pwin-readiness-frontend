@@ -1,7 +1,6 @@
 """ 
 This script contains the Streamlit frontend code for the pWin.ai PDF Analysis Tool.
 """
-import dotenv
 import streamlit as st
 import pandas as pd
 try:
@@ -17,7 +16,6 @@ from frontend_utils import (
 )
 from api_calls import call_classify_pdfs, call_evaluate_rfp_pdfs, call_readiness_score
 
-dotenv.load_dotenv()
 st.set_page_config(page_title="pWin.AI", layout="wide")
 
 # Define available document types for the dropdown - these match the backend classification
