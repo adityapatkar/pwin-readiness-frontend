@@ -117,11 +117,10 @@ def save_uploaded_files(uploaded_files):
     
     # Check total size
     total_size = get_total_size(uploaded_files)
-    size_threshold = 30 * 1024 * 1024  # 30MB in bytes
+    size_threshold = 20 * 1024 * 1024  # 20MB in bytes
     
     # Inform user if compression will happen
     if total_size > size_threshold:
-        st.warning(f"Total file size ({total_size/1048576:.2f}MB) exceeds allowed file size. Files will be compressed.")
         
         # Create a list of (file, size) tuples and sort by size (largest first)
         file_sizes = [(file, file.size) for file in uploaded_files]
