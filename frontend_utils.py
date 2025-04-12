@@ -6,6 +6,8 @@ import tempfile
 import os
 import streamlit as st
 import plotly.graph_objects as go
+from pypdf import PdfReader, PdfWriter
+from io import BytesIO
 
 
 def create_gauge_chart(score, update_cache=True, title="Readiness Score"):
@@ -38,6 +40,73 @@ def create_gauge_chart(score, update_cache=True, title="Readiness Score"):
     return fig
 
 
+def get_total_size(uploaded_files):
+    """
+    Calculate the total size of uploaded files in bytes
+    """
+    total_size = 0
+    for file in uploaded_files:
+        total_size += file.size
+    return total_size
+
+
+def compress_pdf(input_file):
+    """
+    Compress a PDF file by removing images using pypdf
+    
+    Args:
+        input_file: StreamlitUploadedFile object containing PDF data
+        
+    Returns:
+        BytesIO: Compressed PDF data or original data if compression doesn't reduce size
+    """
+    # Store original position and get size
+    original_pos = input_file.tell()
+    input_file.seek(0, os.SEEK_END)
+    original_size = input_file.tell()
+    input_file.seek(0)  # Reset to beginning for processing
+    
+    # Keep original data
+    original_data = input_file.read()
+    input_file.seek(0)  # Reset again
+    
+    # Create a temporary file for processing
+    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_input:
+        temp_input.write(original_data)
+        temp_input_path = temp_input.name
+    
+    try:
+        # Create a PdfWriter with the source file
+        writer = PdfWriter(clone_from=temp_input_path)
+        
+        # Remove images to reduce file size
+        writer.remove_images()
+        
+        # Write to BytesIO buffer
+        output = BytesIO()
+        writer.write(output)
+        output.seek(0)
+        
+        # Get compressed size and calculate ratio
+        compressed_size = len(output.getbuffer())
+        compression_ratio = (original_size / compressed_size) if compressed_size > 0 else 1
+        
+        # Reset input file position
+        input_file.seek(original_pos)
+        
+        # Only use compressed version if it's actually smaller
+        if compressed_size < original_size:
+            return output
+        else:
+            result = BytesIO(original_data)
+            return result
+    
+    finally:
+        # Clean up temp file
+        if os.path.exists(temp_input_path):
+            os.unlink(temp_input_path)
+
+
 @st.cache_data
 def save_uploaded_files(uploaded_files):
     """
@@ -45,11 +114,37 @@ def save_uploaded_files(uploaded_files):
     """
     temp_dir = tempfile.TemporaryDirectory()
     file_paths = []
-    for uploaded_file in uploaded_files:
-        file_path = os.path.join(temp_dir.name, uploaded_file.name)
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        file_paths.append(file_path)
+    
+    # Check total size
+    total_size = get_total_size(uploaded_files)
+    size_threshold = 30 * 1024 * 1024  # 30MB in bytes
+    
+    # Inform user if compression will happen
+    if total_size > size_threshold:
+        st.warning(f"Total file size ({total_size/1048576:.2f}MB) exceeds 30MB threshold. Files will be compressed.")
+        
+        # Create a list of (file, size) tuples and sort by size (largest first)
+        file_sizes = [(file, file.size) for file in uploaded_files]
+        file_sizes.sort(key=lambda x: x[1], reverse=True)
+        
+        # Process files in order of size (largest first)
+        for uploaded_file, size in file_sizes:
+            file_path = os.path.join(temp_dir.name, uploaded_file.name)
+            
+            with st.spinner(f"Compressing {uploaded_file.name} ({size/1048576:.2f}MB)..."):
+                compressed_data = compress_pdf(uploaded_file)
+                with open(file_path, "wb") as f:
+                    f.write(compressed_data.getbuffer())
+                
+            file_paths.append(file_path)
+    else:
+        # If no compression needed, process files in original order
+        for uploaded_file in uploaded_files:
+            file_path = os.path.join(temp_dir.name, uploaded_file.name)
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            file_paths.append(file_path)
+    
     return temp_dir, file_paths
 
 
