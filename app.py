@@ -127,7 +127,7 @@ def clear_cache_data():
 with st.sidebar:
     st.subheader("pWin.ai Document Analysis")
     st.write("Assess proposal readiness with AI document analysis.")
-    st.write("📋 Upload documents and select analysis options below:")
+    st.write("📋 Upload documents below:")
     
     # File upload
     uploaded_files = st.file_uploader(
@@ -147,14 +147,15 @@ with st.sidebar:
     )
     
     # Select which APIs to call
-    with st.expander("⚙️ Analysis Options", False):
-        st.multiselect(
-            "Select analyses to perform:",
-            ["Classify PDFs", "Evaluate RFP", "Readiness Score"],
-            default=st.session_state.api_selection,
-            key="api_selection_widget",
-            on_change=update_api_selection,
-        )
+    # with st.expander("⚙️ Analysis Options", False):
+    #     st.multiselect(
+    #         "Select analyses to perform:",
+    #         ["Classify PDFs", "Evaluate RFP", "Readiness Score"],
+    #         default=st.session_state.api_selection,
+    #         key="api_selection_widget",
+    #         on_change=update_api_selection,
+    #     )
+    st.session_state.api_selection = ["Classify PDFs", "Evaluate RFP", "Readiness Score"]
     
     st.button("🧹 Clear All Data", on_click=clear_cache_data, key="clear_cache_button")
 
@@ -385,18 +386,14 @@ with tab2:
                             </div>
                             """, unsafe_allow_html=True)
                 
-                # Show detailed SOW elements in an expander
-                with st.expander("📄 RFP Element Details", expanded=False):
-                    st.write(
-                        "Documents covering scope, objectives, tasks, and deliverables:"
-                    )
-                    st.code(st.session_state.rfp_evaluation_results.get("sow_elements_file_name", ""))
-                    sow_elements = st.session_state.rfp_evaluation_results.get("sow_elements", {})
-                    for key, value in sow_elements.items():
-                        st.subheader(key)
-                        st.write(value)
-                        st.write("---")
-                        st.write("---")
+                # Replace expander with subheader and individual expanders
+                st.subheader("📄 RFP Element Details")
+                st.write("Documents covering scope, objectives, tasks, and deliverables:")
+                st.code(st.session_state.rfp_evaluation_results.get("sow_elements_file_name", ""))
+                sow_elements = st.session_state.rfp_evaluation_results.get("sow_elements", {})
+                for element_key, element_value in sow_elements.items():
+                    with st.expander(f"{element_key}", expanded=False):
+                        st.write(element_value)
                 
                 st.success("✓ Your documents meet the minimum requirements. Continue to the 'Readiness Assessment' tab for a detailed score.")
             else:
@@ -434,7 +431,7 @@ with tab3:
                     
                     # Show toast notification with score
                     score = st.session_state.readiness_score_results.get("readiness_score", 0)
-                    st.toast(f"Readiness Score: {score}%", icon="📊")
+                    st.toast(f"Readiness Score: {score*100}%", icon="📊")
                         
             except Exception as e:
                 st.error(f"⚠️ Error calculating readiness score: {e}")
@@ -444,13 +441,22 @@ with tab3:
         if st.session_state.readiness_score_results:
             score = st.session_state.readiness_score_results.get("readiness_score", 0)
             st.plotly_chart(create_gauge_chart(score))
-            with st.expander("📊 Score Analysis", expanded=False):
-                reasons = st.session_state.readiness_score_results.get("reason", {})
-                for key, value in reasons.items():
-                    st.subheader(key)
-                    st.write(value)
-                    st.write("---")
-                    st.write("---")
+            
+            # Replace expander with subheader and individual expanders for Score Analysis
+            reasons = st.session_state.readiness_score_results.get("reason", {})
+            if reasons:
+                st.subheader("📊 Score Analysis")
+                for reason_key, reason_value in reasons.items():
+                    with st.expander(f"{reason_key}", expanded=False):
+                        st.write(reason_value)
+            
+            # Replace expander with subheader and individual expanders for Suggestions
+            if "suggestions" in st.session_state.readiness_score_results and st.session_state.readiness_score_results["suggestions"]:
+                st.subheader("📈 Suggestions for Improvement")
+                for suggestion_key, suggestion_value in st.session_state.readiness_score_results["suggestions"].items():
+                    with st.expander(f"{suggestion_key}", expanded=False):
+                        st.write(suggestion_value)
+
             with st.expander("📈 Detailed Scoring Breakdown", expanded=True):
                 scores = st.session_state.readiness_score_results.get("section_scores", {})
                 if len(scores) > 3:
